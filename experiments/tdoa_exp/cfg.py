@@ -42,8 +42,8 @@ ls = 0.0  # label smoothing
 model = 'NGCCPHAT'  # choices: NGCCPHAT, PGCCPHAT
 max_delay = 23
 num_channels = 128  # number of channels in final layer of NGCCPHAT backbone
-head = 'regression'  # final layer type. Choices: 'classifier', 'regression'
-loss = 'mse'  # use 'ce' loss for classifier and 'mse' loss for regression
+head = 'classifier'  # final layer type. Choices: 'classifier', 'regression'
+loss = 'ce'  # use 'ce' loss for classifier and 'mse' loss for regression
 # Set to true in order to replace Sinc filters with regular convolutional layers
 no_sinc = False
 
