@@ -93,7 +93,7 @@ source_locs_test = np.random.uniform(
 
 # fetch audio snippets within the range of [0, 2] seconds during training
 lower_bound = 0
-upper_bound = fs * MIN_SIG_LEN
+upper_bound = fs * MIN_SIG_LEN # TODO: We only train on 1 second clips regardless
 
 # create datasets
 train_set = LibriSpeechLocations(source_locs_train, split="test-clean")
@@ -292,6 +292,7 @@ test_loader = torch.utils.data.DataLoader(
     pin_memory=pin_memory,
 )
 
+# For DOA GCC comparisons are useless, can remove
 for e in range(epochs):
     if args.evaluate:
         break

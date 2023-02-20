@@ -10,7 +10,7 @@ xyz_min_train = [0.0, 0.0, 0.0]
 xyz_max_train = room_dim_train
 
 # microphone locations
-mic_locs_train = np.array([[3.5, 2.25, 1.5], [3.5, 2.75, 1.5]]).T
+mic_locs_train = np.array([[3.5, 2.25, 1.5], [3.5, 2.75, 1.5]]).T #TODO: Might neet to change for DOA data
 
 # Test room parameters
 dx_test = 6.0
@@ -48,10 +48,10 @@ loss = 'mse'  # use 'ce' loss for classifier and 'mse' loss for regression
 no_sinc = False
 
 # training environment
-snr = [0, 30]  # during training, snr will be drawn uniformly from this interval
-t60 = [0.2, 1.0]  # during training, t60 will be drawn uniformly from this interval
+snr = None  # during training, snr will be drawn uniformly from this interval
+t60 = None  # during training, t60 will be drawn uniformly from this interval
 fs = 16000  # sampling rate
-sig_len = 2048  # length of snippet used for tdoa estimation
+sig_len = 1024  # length of snippet used for tdoa estimation
 anechoic = False  # set to True to use anechoic environment without reverberation
 
 # threshold in samples

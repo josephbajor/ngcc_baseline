@@ -131,7 +131,12 @@ class NGCCPHAT(nn.Module):
                     nn.BatchNorm1d(2 * self.max_tau + 1),
                     nn.LeakyReLU(0.2),
                     nn.Linear(2 * self.max_tau + 1, 1))
-
+    # NOTE: max_tau is not relevant in this case, important when the elements of the output vector are = to the # of delays that can be predicted
+    # In our case, it is pressed into a linear layer, basically just serves as a hidden size
+    # Will keep it at max_tau for now but can be changed independently
+    # NOT worried about performance here, just getting the network to output a baseline measure
+    # Will likely be worse since this was obviously never truly designed for regression
+    # Unfair comparison?
     def forward(self, x1, x2):
 
         batch_size = x1.shape[0]

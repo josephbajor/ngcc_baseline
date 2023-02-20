@@ -13,6 +13,36 @@ from scipy.signal import convolve
 from torch.utils.data import DataLoader, Dataset
 
 
+def build_loaders(params):
+    """
+    Builds dataloaders for baseline experiments
+    """
+    data_train = DoaData(params, "train")
+    data_val = DoaData(params, "val")
+    data_test = DoaData(params, "test")
+
+    train_loader = DataLoader(
+        dataset=data_train,
+        batch_size=params.batch_size,
+        num_workers=params.nworkers,
+        shuffle=True,
+    )
+    val_loader = DataLoader(
+        dataset=data_val,
+        batch_size=params.batch_size,
+        num_workers=params.nworkers,
+        shuffle=False,
+    )
+    test_loader = DataLoader(
+        dataset=data_test,
+        batch_size=params.batch_size,
+        num_workers=params.nworkers,
+        shuffle=False,
+    )
+
+    return train_loader, val_loader, test_loader
+
+
 class DoaDataModule(LightningDataModule):
     def __init__(self, params):
         self.params = params
@@ -218,7 +248,7 @@ class DoaData(Dataset):
 
         if self.binary:
             y = 1 if y > 0 else 0
-        return out, y
+        return out['left'], out['right'] , y
 
     def __len__(self):
         return self.set_len
