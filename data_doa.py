@@ -11,6 +11,7 @@ from pytorch_lightning import LightningDataModule
 from scipy.io import loadmat
 from scipy.signal import convolve
 from torch.utils.data import DataLoader, Dataset
+from torchaudio.transforms import Resample
 
 
 def build_loaders(params):
@@ -182,6 +183,8 @@ class DoaData(Dataset):
         self.save = params.debug
         self.simple = params.simple_input
         self.n_angles = params.n_angles
+        self.resample = params.resample
+
         if self.train:
             self.n_angles += 2
         self.binary = params.binary
@@ -195,6 +198,10 @@ class DoaData(Dataset):
             rir_idx = idx % len(self.rir_files)
         rir_path = self.rir_files[rir_idx]
         speech = self.read(file_path)
+
+        if self.resample is not None:
+            speech = resampy.resample(speech, self.sample_rate, self.resample)
+
         if self.simple:
             speech_up = resampy.resample(speech, 1, self.n_angles)
             angle_idx = int(
@@ -248,7 +255,7 @@ class DoaData(Dataset):
 
         if self.binary:
             y = 1 if y > 0 else 0
-        return out['left'], out['right'] , y
+        return out['left'].astype('float32'), out['right'].astype('float32'), y.astype('float32')
 
     def __len__(self):
         return self.set_len

@@ -137,6 +137,13 @@ def get_params():
         choices=["mean", "selfattn"],
         help="Method to perform temporal pooling- currently accepts mean and selfattn",
     )
+    parser.add_argument(
+        "--resample",
+        type=int,
+        default=16000,
+        help="Resample audio on load to specified sample rate"
+    )
+
 
     # Data
     parser.add_argument(
