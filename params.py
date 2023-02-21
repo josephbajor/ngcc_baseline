@@ -5,12 +5,18 @@ def get_params():
     parser = argparse.ArgumentParser()
 
     # Training arguments
+    parser.add_argument(
+        "--disable_debug",
+        default=False,
+        action="store_true",
+        help="Enables WandB logging and disables verbose local logging",
+    )
     parser.add_argument("--run_name", type=str, help="name of run")
     parser.add_argument(
         "--epochs", type=int, default=10, help="number of training epochs"
     )
     parser.add_argument("--batch_size", type=int, default=16, help="batch size")
-    parser.add_argument("--nworkers", type=int, default=4, help="number of workers")
+    parser.add_argument("--nworkers", type=int, default=1, help="number of workers")
     parser.add_argument("--logger", type=str, default=None, help="logger option")
     parser.add_argument("--lr", type=float, default=4e-4, help="base learning rate")
     parser.add_argument(
@@ -133,7 +139,7 @@ def get_params():
     parser.add_argument(
         "--temporal_pool",
         type=str,
-        default='mean',
+        default="mean",
         choices=["mean", "selfattn"],
         help="Method to perform temporal pooling- currently accepts mean and selfattn",
     )
@@ -141,9 +147,8 @@ def get_params():
         "--resample",
         type=int,
         default=16000,
-        help="Resample audio on load to specified sample rate"
+        help="Resample audio on load to specified sample rate",
     )
-
 
     # Data
     parser.add_argument(
@@ -172,6 +177,9 @@ def get_params():
         type=float,
         default=0.0,
         help="probability of adding noise during training",
+    )
+    parser.add_argument(
+        "--keyring_root", type=str, default="/home/jbajor/keyring/", help="keyring directory"
     )
     parser.add_argument(
         "--white_noise",
@@ -303,10 +311,7 @@ def get_params():
         help="window applied to input feature; `rect`, `ham`, or `hann`",
     )
     parser.add_argument(
-        '--target_phat',
-        default=False,
-        action='store_true',
-        help='apply PHAT to target'
+        "--target_phat", default=False, action="store_true", help="apply PHAT to target"
     )
 
     return parser.parse_args()

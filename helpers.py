@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import time
+import wandb
 
 
 class LabelSmoothing(nn.Module):
@@ -21,3 +23,25 @@ class LabelSmoothing(nn.Module):
         smooth_loss = -logprobs.mean(dim=-1)
         loss = self.confidence * nll_loss + self.smoothing * smooth_loss
         return loss.mean()
+
+
+def initiate_run(params):
+    """
+    Initialize connection to wandb and begin the run using provided hparams
+    """
+    with open(params.keyring_root + "wandb.key") as key:
+        wandb.login(key=key.read().strip())
+        key.close()
+
+    if params.disable_debug:
+        mode = "online"
+    else:
+        mode = "disabled"
+
+    run = wandb.init(
+        name=f"{params.run_name}_{int(time.time())}",
+        project="NGCC_Baseline_DOA",
+        mode=mode,
+    )
+
+    return run

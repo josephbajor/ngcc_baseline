@@ -10,6 +10,8 @@ from torchinfo import summary
 import argparse
 import os
 from params import get_params
+from helpers import initiate_run
+import wandb
 
 from model import NGCCPHAT, PGCCPHAT, GCC
 from data_doa import build_loaders
@@ -38,7 +40,7 @@ batch_size = cfg.batch_size
 lr = cfg.lr
 fs = cfg.fs
 max_tau = cfg.max_delay
-wd=cfg.wd
+wd = cfg.wd
 
 train_loader, val_loader, test_loader = build_loaders(params)
 
@@ -59,36 +61,54 @@ optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
 loss_fn = nn.MSELoss()
 
+run = initiate_run(params)
+
+
 for epoch in range(epochs):
     train_loss = 0
 
     model.train()
 
-    pbar_update = batch_size
-    with tqdm(total=len(train_loader)) as pbar:
-        for batch_idx, (x1, x2, doa) in enumerate(train_loader):
-            bs = x1.shape[0]
+    # Progress bar
+    train_bar = tqdm(
+        total=len(train_loader),
+        dynamic_ncols=True,
+        leave=False,
+        position=0,
+        desc="Train",
+        ncols=2,
+    )
 
-            x1 = x1.to(device)
-            x2 = x2.to(device)
-            doa = doa.to(device)
-            y_hat = model(x1, x2)
+    for batch_idx, (x1, x2, doa) in enumerate(train_loader):
+        bs = x1.shape[0]
 
-            loss = loss_fn(y_hat, doa)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        x1 = x1.to(device)
+        x2 = x2.to(device)
+        doa = doa.to(device)
+        y_hat = model(x1, x2)
 
-            train_loss += loss.detach().item() * bs
+        loss = loss_fn(y_hat, doa)
 
-            pbar.update(pbar_update)
+        train_bar.set_postfix(
+            loss="{:.4f}".format(loss),
+            lr="{:.04f}".format(float(optimizer.param_groups[0]["lr"])),
+        )
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.detach().item() * bs
+
+        train_bar.update()
+
+    train_bar.close()
 
     train_loss = train_loss / len(train_loader)
 
-    outstr = (
-        "Train epoch %d, loss: %.6f"
-        % (epoch, train_loss)
-    )
+    outstr = "Train epoch %d, loss: %.6f" % (epoch, train_loss)
+
+    print(outstr)
 
     scheduler.step()
 
@@ -98,25 +118,39 @@ for epoch in range(epochs):
     model.eval()
 
     val_loss = 0.0
-    with tqdm(total=len(val_loader)) as pbar:
-        for batch_idx, (x1, x2, doa) in enumerate(val_loader):
-            with torch.no_grad():
-                bs = x1.shape[0]
-                x1 = x1.to(device)
-                x2 = x2.to(device)
-                doa = doa.to(device)
-                y_hat = model(x1, x2)
 
-                loss = loss_fn(y_hat, doa)
-                val_loss += loss.detach().item() * bs
-
-                pbar.update(pbar_update)
-
-    val_loss = val_loss / len(val_loader)
-
-    outstr = (
-        "Val epoch %d, loss: %.6f"
-        % (epoch, val_loss)
+    val_bar = tqdm(
+        total=len(val_loader),
+        dynamic_ncols=True,
+        leave=False,
+        position=0,
+        desc="Val",
+        ncols=1,
     )
 
+    for batch_idx, (x1, x2, doa) in enumerate(val_loader):
+        with torch.no_grad():
+            bs = x1.shape[0]
+            x1 = x1.to(device)
+            x2 = x2.to(device)
+            doa = doa.to(device)
+            y_hat = model(x1, x2)
+
+            loss = loss_fn(y_hat, doa)
+            val_loss += loss.detach().item() * bs
+
+            val_bar.set_postfix(loss="{:.4f}".format(loss))
+            val_bar.update()
+
+    val_loss = val_loss / len(val_loader)
+    val_bar.close()
+
+    outstr = "Val epoch %d, loss: %.6f" % (epoch, val_loss)
+
+    print(outstr)
+
+    wandb.log({"train_loss":train_loss, "validation_loss":val_loss, "lr":scheduler.get_last_lr()})
+
     torch.cuda.empty_cache()
+
+run.finish()
