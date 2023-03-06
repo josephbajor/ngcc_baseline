@@ -1,5 +1,8 @@
 import numpy as np
 
+# Data
+sim_data_path = '/home/marklind/workhorse1/ngcc_16k'
+
 # Training room simulation parameters
 # room dimensions in meters
 dx_train = 7.0
@@ -43,15 +46,15 @@ model = 'NGCCPHAT'  # choices: NGCCPHAT, PGCCPHAT
 max_delay = 23
 num_channels = 128  # number of channels in final layer of NGCCPHAT backbone
 head = 'classifier'  # final layer type. Choices: 'classifier', 'regression'
-loss = 'mse'  # use 'ce' loss for classifier and 'mse' loss for regression
+loss = 'ce'  # use 'ce' loss for classifier and 'mse' loss for regression
 # Set to true in order to replace Sinc filters with regular convolutional layers
 no_sinc = False
 
 # training environment
-snr = None  # during training, snr will be drawn uniformly from this interval
-t60 = None  # during training, t60 will be drawn uniformly from this interval
+snr = [0,30]  # during training, snr will be drawn uniformly from this interval
+t60 = [0.2,1.0]  # during training, t60 will be drawn uniformly from this interval
 fs = 16000  # sampling rate
-sig_len = 1024  # length of snippet used for tdoa estimation
+sig_len = 2048  # length of snippet used for tdoa estimation
 anechoic = False  # set to True to use anechoic environment without reverberation
 
 # threshold in samples

@@ -200,7 +200,7 @@ def get_params():
         default=None,
         help="white noise snr; `None` will mimic vbd snr",
     )
-    parser.add_argument("--sample_rate", type=int, default=11025, help="sample rate")
+    parser.add_argument("--sample_rate", type=int, default=16000, help="sample rate")
     parser.add_argument(
         "--fixed_duration", type=float, default=1.0, help="duration of training samples"
     )
@@ -294,7 +294,7 @@ def get_params():
         help="validation data sample type; `wn`, `tone`, `speech`, or `all`",
     )
     parser.add_argument(
-        "--sep_len", type=float, default=0.18, help="simulated mic separation"
+        "--sep_len", type=float, default=0.5, help="simulated mic separation"
     )
     parser.add_argument(
         "--sample_len", type=int, default=1.0, help="duration of one sample"

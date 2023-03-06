@@ -1,1 +1,1 @@
-Namespace(exp_name='ngccphat', evaluate=True, eval_nogen=False, DOA=False)
+Namespace(exp_name='ngccphat', evaluate=False, eval_nogen=True)

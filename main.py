@@ -11,9 +11,19 @@ import argparse
 import os
 
 from model import NGCCPHAT, PGCCPHAT, GCC
-from data import LibriSpeechLocations, DelaySimulator, one_random_delay, remove_silence
-from helpers import LabelSmoothing
+from data import (
+    LibriSpeechLocations,
+    DelaySimulator,
+    one_random_delay,
+    remove_silence,
+    SimData,
+)
+from helpers import LabelSmoothing, display_test_results
 import cfg
+
+from params import get_params
+
+params = get_params()
 
 # Librispeech dataset constants
 DATA_LEN = 2620
@@ -34,14 +44,10 @@ parser.add_argument(
 parser.add_argument(
     "--eval_nogen",
     action="store_true",
-    help="Flag to enable loading of local data for evaluation instead of generating"
+    default=False,
+    help="Flag to enable loading of local data for evaluation instead of generating",
 )
 
-parser.add_argument(
-    "--DOA",
-    action="store_true",
-    help="Flag to enable DOA training with DoaNet data instead of TDOA with synthetic librispeech",
-)
 args = parser.parse_args()
 
 if not os.path.exists("experiments"):
@@ -99,7 +105,7 @@ source_locs_test = np.random.uniform(
 
 # fetch audio snippets within the range of [0, 2] seconds during training
 lower_bound = 0
-upper_bound = fs * MIN_SIG_LEN # TODO: We only train on 1 second clips regardless
+upper_bound = fs * MIN_SIG_LEN  # TODO: We only train on 1 second clips regardless
 
 # create datasets
 train_set = LibriSpeechLocations(source_locs_train, split="test-clean")
@@ -155,6 +161,11 @@ indices_train = [
 train_set = data_utils.Subset(train_set, indices_train)
 val_set = data_utils.Subset(val_set, indices_val)
 test_set = data_utils.Subset(test_set, indices_test)
+
+if args.eval_nogen:
+    print("Building test set with pregenerated data...")
+
+    test_set = SimData(cfg.sim_data_path, set_type="test")
 
 train_len = len(train_set)
 val_len = len(val_set)
@@ -288,19 +299,29 @@ val_loader = torch.utils.data.DataLoader(
     num_workers=num_workers,
     pin_memory=pin_memory,
 )
-test_loader = torch.utils.data.DataLoader(
-    test_set,
-    batch_size=batch_size,
-    shuffle=False,
-    drop_last=False,
-    collate_fn=delay_simulator_test,
-    num_workers=num_workers,
-    pin_memory=pin_memory,
-)
+if args.eval_nogen:
+    test_loader = torch.utils.data.DataLoader(
+        test_set,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+else:
+    test_loader = torch.utils.data.DataLoader(
+        test_set,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False,
+        collate_fn=delay_simulator_test,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
 
 # For DOA GCC comparisons are useless, can remove
 for e in range(epochs):
-    if args.evaluate:
+    if args.evaluate or args.eval_nogen:
         break
     mae = 0
     gcc_mae = 0
@@ -314,8 +335,8 @@ for e in range(epochs):
         for batch_idx, (x1, x2, delays) in enumerate(train_loader):
             bs = x1.shape[0]
 
-            x1 = x1.to(device)
-            x2 = x2.to(device)
+            x1 = x1.to(device).type(torch.FloatTensor)
+            x2 = x2.to(device).type(torch.FloatTensor)
             delays = delays.to(device)
             y_hat = model(x1, x2)
 
@@ -373,8 +394,8 @@ for e in range(epochs):
         for batch_idx, (x1, x2, delays) in enumerate(val_loader):
             with torch.no_grad():
                 bs = x1.shape[0]
-                x1 = x1.to(device)
-                x2 = x2.to(device)
+                x1 = x1.to(device).type(torch.FloatTensor)
+                x2 = x2.to(device).type(torch.FloatTensor)
                 delays = delays.to(device)
                 y_hat = model(x1, x2)
 
@@ -416,9 +437,101 @@ for e in range(epochs):
 
 
 # Save the model
-if not args.evaluate:
+if not args.evaluate and not args.eval_nogen:
     torch.save(model.state_dict(), "experiments/" + args.exp_name + "/" + "model.pth")
     LOG_FOUT.close()
+
+if args.eval_nogen:
+    model.load_state_dict(
+        torch.load(
+            "experiments/" + args.exp_name + "/model.pth",
+            map_location=torch.device(device),
+        )
+    )
+
+    model.eval()
+
+    LOG_DIR = os.path.join("experiments/" + args.exp_name + "/")
+    if cfg.anechoic:
+        name = "eval_anechoic.txt"
+    else:
+        name = "eval.txt"
+    LOG_FOUT = open(os.path.join(LOG_DIR, name), "w")
+    LOG_FOUT.write(str(args) + "\n")
+
+    if cfg.anechoic:
+        t60_range = [0.0]
+    else:
+        t60_range = cfg.t60_range
+
+    pbar_update = batch_size
+
+    test_angles, test_rt60s, test_delays, test_snr, test_preds, test_preds_gcc = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
+
+    test_loss = 0
+    with tqdm(total=test_len) as pbar:
+        for batch_idx, (x1, x2, angle, rt60, delays, snr) in enumerate(test_loader):
+            with torch.no_grad():
+                bs = x1.shape[0]
+                x1 = x1.type(torch.FloatTensor).to(device)
+                x2 = x2.type(torch.FloatTensor).to(device)
+                delays = delays.to(device)
+                y_hat = model(x1, x2)
+
+                cc = gcc(x1.squeeze(), x2.squeeze())
+                shift_gcc = torch.argmax(cc, dim=-1) - max_tau_gcc
+
+                if cfg.loss == "ce":
+                    delays_loss = torch.round(delays).type(torch.LongTensor)
+                    shift = torch.argmax(y_hat, dim=-1) - max_tau
+                else:
+                    delays_loss = (delays - delay_mu) / delay_sigma
+                    shift = y_hat * delay_sigma + delay_mu - max_tau
+
+                test_angles.append(angle)
+                test_rt60s.append(rt60)
+                test_delays.append(delays)
+                test_snr.append(snr)
+                test_preds.append(shift)
+                test_preds_gcc.append(shift_gcc)
+
+                # loss = loss_fn(y_hat, delays_loss.to(device))
+                # test_loss += loss * bs
+
+                pbar.update(pbar_update)
+
+    # print(f'test loss: {test_loss/test_len}')
+
+    test_angles = torch.cat(test_angles)
+    test_rt60s = torch.cat(test_rt60s)
+    test_delays = torch.cat(test_delays)
+    test_snr = torch.cat(test_snr)
+    test_preds = torch.cat(test_preds)
+    test_preds_gcc = torch.cat(test_preds_gcc)
+
+    # # Calculate proper rt60 bins
+    # bin_size = 0.1
+    # min_rt60 = test_rt60s.min()
+    # max_rt60 = test_rt60s.max()
+
+    # rt60_bins = np.linspace()
+
+    display_test_results_NGCC(
+        params,
+        delays=test_delays,
+        preds=test_preds,
+        preds_gcc=test_preds_gcc,
+        rt60s=test_rt60s,
+        snrs=test_snr,
+        max_tau=max_tau,
+    )
 
 
 if args.evaluate:

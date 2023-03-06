@@ -1,11 +1,14 @@
 from torchaudio.datasets import LIBRISPEECH
 import pyroomacoustics as pra
 import numpy as np
+import os
 from typing import Tuple
 from torch import Tensor
 import torch
 import random
+import glob
 from librosa.effects import split
+from audlib.io.audio import audioread
 
 
 def remove_silence(signal, top_db=20, frame_length=2048, hop_length=512):
@@ -175,3 +178,34 @@ class DelaySimulator(object):
 
         return tensors1, tensors2, targets
 
+class SimData(torch.utils.data.Dataset):
+    def __init__(self, data_path, set_type='train'):
+        super().__init__()
+        self.file_list = glob.glob(os.path.join(data_path, set_type, '*.wav'))
+        self.file_list.sort()
+        self.test = set_type=='test'
+        annotations = np.genfromtxt(
+            os.path.join(data_path, set_type, 'annotations.txt'), 
+            delimiter=",", 
+            skip_header=1
+        )
+        self.lags = annotations[:,1]
+        self.angles = annotations[:,2]
+        self.rt60s = annotations[:,3]
+        self.snrs = annotations[:,4]
+
+    def __getitem__(self, idx):
+        signal, _ = audioread(self.file_list[idx])
+        rt60 = self.rt60s[idx]
+        snr = self.snrs[idx]
+        angle = self.angles[idx]
+        lag = self.lags[idx]
+        x1 = signal[:,1]
+        x2 = signal[:,0]
+        if self.test:
+            return x1, x2, angle, rt60, lag, snr
+        else:
+            return x1, x2, angle
+
+    def __len__(self):
+        return len(self.file_list)
