@@ -33,10 +33,10 @@ def initiate_run(params):
         wandb.login(key=key.read().strip())
         key.close()
 
-    if params.disable_debug:
-        mode = "online"
-    else:
+    if params.debug:
         mode = "disabled"
+    else:
+        mode = "online"
 
     run = wandb.init(
         name=f"{params.run_name}_{int(time.time())}",

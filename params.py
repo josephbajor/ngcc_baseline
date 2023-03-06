@@ -5,15 +5,19 @@ def get_params():
     parser = argparse.ArgumentParser()
 
     # Training arguments
+    parser.add_argument("--run_name", type=str, default="NGCC_DOA", help="name of run")
+    parser.add_argument("--load", type=str, default=None, help="run name to load")
     parser.add_argument(
-        "--disable_debug",
-        default=False,
-        action="store_true",
-        help="Enables WandB logging and disables verbose local logging",
+        "--model_path",
+        type=str,
+        default="/home/jbajor/workhorse3/ngcc_baseline/experiments/",
+        help="save path for model",
     )
-    parser.add_argument("--run_name", type=str, help="name of run")
     parser.add_argument(
-        "--epochs", type=int, default=10, help="number of training epochs"
+        "--epochs",
+        type=int,
+        default=10,
+        help="number of training epochs",
     )
     parser.add_argument("--batch_size", type=int, default=16, help="batch size")
     parser.add_argument("--nworkers", type=int, default=1, help="number of workers")
@@ -179,7 +183,10 @@ def get_params():
         help="probability of adding noise during training",
     )
     parser.add_argument(
-        "--keyring_root", type=str, default="/home/jbajor/keyring/", help="keyring directory"
+        "--keyring_root",
+        type=str,
+        default="/home/jbajor/keyring/",
+        help="keyring directory",
     )
     parser.add_argument(
         "--white_noise",

@@ -174,3 +174,4 @@ class DelaySimulator(object):
         targets = torch.Tensor(targets)
 
         return tensors1, tensors2, targets
+

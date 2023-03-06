@@ -32,6 +32,12 @@ parser.add_argument(
     help="Set to true in order to evaluate the model across a range of SNRs and T60s",
 )
 parser.add_argument(
+    "--eval_nogen",
+    action="store_true",
+    help="Flag to enable loading of local data for evaluation instead of generating"
+)
+
+parser.add_argument(
     "--DOA",
     action="store_true",
     help="Flag to enable DOA training with DoaNet data instead of TDOA with synthetic librispeech",

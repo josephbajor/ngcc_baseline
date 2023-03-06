@@ -56,15 +56,32 @@ elif cfg.model == "PGCCPHAT":
 else:
     raise Exception("Please specify a valid model")
 
+model_save_path = os.path.join(params.model_path, params.run_name)
+
 model = model.to(device)
 optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
 loss_fn = nn.MSELoss()
 
+
+
+if params.load is not None:
+    param_dict = torch.load(model_save_path)
+
+    model.load_state_dict(param_dict['model_state_dict'])
+    optimizer.load_state_dict(param_dict['optimizer_state_dict'])
+    scheduler.load_state_dict(param_dict['scheduler_state_dict'])
+    current_epoch = param_dict['epoch']
+    best_val_loss = param_dict['val_loss']
+else:
+    best_val_loss = 0
+    current_epoch = 0
+
+
 run = initiate_run(params)
 
 
-for epoch in range(epochs):
+for epoch in range(current_epoch, epochs):
     train_loss = 0
 
     model.train()
@@ -149,8 +166,23 @@ for epoch in range(epochs):
 
     print(outstr)
 
-    wandb.log({"train_loss":train_loss, "validation_loss":val_loss, "lr":scheduler.get_last_lr()})
+    wandb.log({"train_loss":train_loss, "validation_loss":val_loss, "lr":scheduler.get_last_lr()[0]})
 
     torch.cuda.empty_cache()
+
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+
+        print('saving_model...')
+        torch.save(
+            {
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "val_loss": best_val_loss,
+                "epoch": epoch,
+            },
+            model_save_path,
+        )
 
 run.finish()
