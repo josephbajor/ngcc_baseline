@@ -46,7 +46,7 @@ def initiate_run(params):
 
     return run
 
-def display_test_results_NGCC(params, delays=None, preds=None, preds_gcc=None, rt60s=None, snrs=None, max_tau=None):
+def display_test_results_NGCC(params, delays=None, preds=None, preds_gcc=None, rt60s=None, snrs=None, max_tau=None, t=None):
 
     max_lag = params.sep_len/343*params.sample_rate
     loss = torch.nn.functional.l1_loss(preds, delays)
@@ -55,7 +55,7 @@ def display_test_results_NGCC(params, delays=None, preds=None, preds_gcc=None, r
     # print('Overall error: {:.3f} degrees\t{:.3f} lags'.format(loss*180/torch.pi, loss_lags))
     # print('')
     print('RT60\t|\tRMSE\t|\tGCC RMSE\t|\tMAE\t|\tGCC MAE\t|\tACC\t|\tGCC ACC')
-    print('-'*60)
+    print('-'*120)
 
     reverb_list = torch.linspace(0.3, 1.0, 8)
 
@@ -68,30 +68,42 @@ def display_test_results_NGCC(params, delays=None, preds=None, preds_gcc=None, r
         rt60 -= 0.1
 
         shift = preds[idxs]
-        gt = delays[idxs] - max_tau
+        gt = delays[idxs]
         shift_gcc = preds_gcc[idxs]
         # reverb_loss = torch.nn.functional.l1_loss(reverb_preds, reverb_targets)
         # reverb_loss_lag = torch.sin(reverb_loss)*max_lag
 
         rmse = torch.sqrt(torch.sum(torch.abs(shift-gt)**2)/len(idxs))
-        print('{:.2f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}'.format(rt60, reverb_loss*180/torch.pi, reverb_loss_lag))
+        gcc_rmse = torch.sqrt(torch.sum(torch.abs(shift_gcc-gt)**2)/len(idxs))
+        mae = torch.sum(torch.abs(shift-gt))/len(idxs)
+        gcc_mae = torch.sum(torch.abs(shift_gcc-gt))/len(idxs)
+        acc = torch.sum(torch.abs(shift - gt) < t)/len(idxs)
+        gcc_acc = torch.sum(torch.abs(shift_gcc - gt) < t)/len(idxs)
+
+
+        print('{:.2f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}'.format(rt60, rmse, gcc_rmse, mae, gcc_mae, acc, gcc_acc))
 
     snr_list = torch.linspace(torch.floor(snrs.min()), torch.ceil(snrs.max()), 6)[1:]
     print('')
     print('SNR\t|\tRMSE\t|\tGCC RMSE\t|\tMAE\t|\tGCC MAE\t|\tACC\t|\tGCC ACC')
-    print('-'*60)
+    print('-'*120)
     for ii,snr in enumerate(snr_list):
-        if params.noise_type == 'sim':
-            if ii == 0:
-                idxs = snrs<snr
-            else:
-                idxs = torch.logical_and(snrs<snr, snrs>snr_list[ii-1])
-                
+        if ii == 0:
+            idxs = snrs<snr
         else:
-            idxs = snrs==snr
+            idxs = torch.logical_and(snrs<snr, snrs>snr_list[ii-1])
 
-        snr_preds = preds[idxs]
-        snr_targets = targets[idxs]
-        # snr_loss = torch.nn.functional.l1_loss(snr_preds, snr_targets)
-        # snr_loss_lag = torch.sin(snr_loss)*max_lag
-        print('{:.2f}\t|\t{:.3f}\t|\t{:.3f}'.format(snr, snr_loss*180/torch.pi, snr_loss_lag))
+        shift = preds[idxs]
+        gt = delays[idxs]
+        shift_gcc = preds_gcc[idxs]
+        # reverb_loss = torch.nn.functional.l1_loss(reverb_preds, reverb_targets)
+        # reverb_loss_lag = torch.sin(reverb_loss)*max_lag
+
+        rmse = torch.sqrt(torch.sum(torch.abs(shift-gt)**2)/len(idxs))
+        gcc_rmse = torch.sqrt(torch.sum(torch.abs(shift_gcc-gt)**2)/len(idxs))
+        mae = torch.sum(torch.abs(shift-gt))/len(idxs)
+        gcc_mae = torch.sum(torch.abs(shift_gcc-gt))/len(idxs)
+        acc = torch.sum(torch.abs(shift - gt) < t)/len(idxs)
+        gcc_acc = torch.sum(torch.abs(shift_gcc - gt) < t)/len(idxs)
+
+        print('{:.2f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}'.format(rt60, rmse, gcc_rmse, mae, gcc_mae, acc, gcc_acc))

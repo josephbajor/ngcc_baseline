@@ -320,5 +320,19 @@ def get_params():
     parser.add_argument(
         "--target_phat", default=False, action="store_true", help="apply PHAT to target"
     )
+    parser.add_argument(
+    "--exp_name", type=str, default="ngccphat", help="Name of the experiment"
+    )
+    parser.add_argument(
+        "--evaluate",
+        action="store_true",
+        help="Set to true in order to evaluate the model across a range of SNRs and T60s",
+    )
+    parser.add_argument(
+        "--eval_nogen",
+        action="store_true",
+        default=True,
+        help="Flag to enable loading of local data for evaluation instead of generating",
+    )
 
     return parser.parse_args()

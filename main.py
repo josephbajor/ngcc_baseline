@@ -18,12 +18,12 @@ from data import (
     remove_silence,
     SimData,
 )
-from helpers import LabelSmoothing, display_test_results
+from helpers import LabelSmoothing, display_test_results_NGCC
 import cfg
 
 from params import get_params
 
-params = get_params()
+args = get_params()
 
 # Librispeech dataset constants
 DATA_LEN = 2620
@@ -31,24 +31,6 @@ VAL_IDS = [260, 672, 908]  # use these speaker ids for validation
 TEST_IDS = [61, 121, 237]  # use these speaker ids for testing
 NUM_TEST_WINS = 15
 MIN_SIG_LEN = 2  # only use snippets longer than 2 seconds
-
-parser = argparse.ArgumentParser(description="Time Difference of Arrival Training")
-parser.add_argument(
-    "--exp_name", type=str, default="tdoa_exp", help="Name of the experiment"
-)
-parser.add_argument(
-    "--evaluate",
-    action="store_true",
-    help="Set to true in order to evaluate the model across a range of SNRs and T60s",
-)
-parser.add_argument(
-    "--eval_nogen",
-    action="store_true",
-    default=False,
-    help="Flag to enable loading of local data for evaluation instead of generating",
-)
-
-args = parser.parse_args()
 
 if not os.path.exists("experiments"):
     os.makedirs("experiments")
@@ -482,8 +464,8 @@ if args.eval_nogen:
                 bs = x1.shape[0]
                 x1 = x1.type(torch.FloatTensor).to(device)
                 x2 = x2.type(torch.FloatTensor).to(device)
-                delays = delays.to(device)
-                y_hat = model(x1, x2)
+                # delays = delays.to(device)
+                y_hat = model(x2, x1)
 
                 cc = gcc(x1.squeeze(), x2.squeeze())
                 shift_gcc = torch.argmax(cc, dim=-1) - max_tau_gcc
@@ -524,13 +506,14 @@ if args.eval_nogen:
     # rt60_bins = np.linspace()
 
     display_test_results_NGCC(
-        params,
+        args,
         delays=test_delays,
         preds=test_preds,
         preds_gcc=test_preds_gcc,
         rt60s=test_rt60s,
         snrs=test_snr,
         max_tau=max_tau,
+        t = cfg.t,
     )
 
 

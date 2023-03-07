@@ -186,7 +186,7 @@ class SimData(torch.utils.data.Dataset):
         self.test = set_type=='test'
         annotations = np.genfromtxt(
             os.path.join(data_path, set_type, 'annotations.txt'), 
-            delimiter=",", 
+            delimiter=",",
             skip_header=1
         )
         self.lags = annotations[:,1]
