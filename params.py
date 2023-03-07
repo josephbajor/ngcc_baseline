@@ -326,6 +326,7 @@ def get_params():
     parser.add_argument(
         "--evaluate",
         action="store_true",
+        default=False,
         help="Set to true in order to evaluate the model across a range of SNRs and T60s",
     )
     parser.add_argument(

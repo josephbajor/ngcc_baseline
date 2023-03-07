@@ -464,7 +464,12 @@ if args.eval_nogen:
                 bs = x1.shape[0]
                 x1 = x1.type(torch.FloatTensor).to(device)
                 x2 = x2.type(torch.FloatTensor).to(device)
-                # delays = delays.to(device)
+                delays = delays.to(device)
+
+                # win_len = x1.shape[-1]//NUM_TEST_WINS
+                x1 = x1.unfold(-1, sig_len, sig_len//2).flatten(0,1)
+                x2 = x2.unfold(-1, sig_len, sig_len//2).flatten(0,1)
+
                 y_hat = model(x2, x1)
 
                 cc = gcc(x1.squeeze(), x2.squeeze())
@@ -591,7 +596,7 @@ if args.evaluate:
                     for batch_idx, (x1, x2, delays) in enumerate(test_loader):
                         with torch.no_grad():
                             bs = x1.shape[0]
-                            x1 = x1.to(device)
+                            x1 = x1.to(device) # size: [32,1,2048]
                             x2 = x2.to(device)
                             delays = delays.to(device)
                             y_hat = model(x1, x2)

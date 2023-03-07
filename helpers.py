@@ -48,6 +48,14 @@ def initiate_run(params):
 
 def display_test_results_NGCC(params, delays=None, preds=None, preds_gcc=None, rt60s=None, snrs=None, max_tau=None, t=None):
 
+    win_count = preds[0].shape[0]//delays[0].shape[0]
+
+    delays = torch.cat([torch.repeat_interleave(t, win_count) for t in delays])
+    rt60s = torch.cat([torch.repeat_interleave(t, win_count) for t in rt60s])
+    snrs = torch.cat([torch.repeat_interleave(t, win_count) for t in snrs])
+    preds = torch.cat(preds)
+    preds_gcc = torch.cat(preds_gcc)
+
     max_lag = params.sep_len/343*params.sample_rate
     loss = torch.nn.functional.l1_loss(preds, delays)
     loss_lags = torch.sin(loss)*max_lag
@@ -106,4 +114,4 @@ def display_test_results_NGCC(params, delays=None, preds=None, preds_gcc=None, r
         acc = torch.sum(torch.abs(shift - gt) < t)/len(idxs)
         gcc_acc = torch.sum(torch.abs(shift_gcc - gt) < t)/len(idxs)
 
-        print('{:.2f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}'.format(rt60, rmse, gcc_rmse, mae, gcc_mae, acc, gcc_acc))
+        print('{:.2f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}\t|\t{:.3f}'.format(snr, rmse, gcc_rmse, mae, gcc_mae, acc, gcc_acc))
